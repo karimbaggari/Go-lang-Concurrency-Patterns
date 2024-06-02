@@ -5,6 +5,17 @@ import (
 	"time"
 )
 
+func doWork(done <- chan bool) {
+	for {
+		select {
+		case <- done:
+			return
+		default:
+			fmt.Println("channel is empty")
+		}
+	}
+}
+
 func main() {
 	myChannel := make(chan string)
 	anotherChannel := make(chan string)
@@ -46,13 +57,11 @@ func main() {
 		fmt.Println(result)
 	}
 
-	go func () {
-		for {
-			select {
-			default:
-				fmt.Println("channel is empty")
-			}
-		}
-	}()
-	time.Sleep(time.Second * 2)
+	done := make(chan bool)
+
+	go doWork(done)
+	
+	time.Sleep(time.Second)
+
+	close(done)
 }
