@@ -15,7 +15,6 @@ func doWork(done <- chan bool) {
 		}
 	}
 }
-fmt.Println("channel is")
 
 func main() {
 	myChannel := make(chan string)
