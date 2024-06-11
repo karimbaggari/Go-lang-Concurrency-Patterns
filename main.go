@@ -5,63 +5,60 @@ import (
 	"time"
 )
 
-func doWork(done <- chan bool) {
-	for {
-		select {
-		case <- done:
-			return
-		default:
-			fmt.Println("channel is empty")
-		}
-	}
-}
 
 func main() {
-	myChannel := make(chan string)
-	anotherChannel := make(chan string)
+	normalOrders := make(chan string)
+	priorityOrders := make(chan string)
 
+	// Goroutine to generate normal orders
 	go func() {
-		anotherChannel <- "data 2"
-	}()
-	go func() {
-		myChannel <- "data"
-	}()
-	
-	time.Sleep(time.Second * 2)
-
-	select {
-		case msgFromMyChannel := <- myChannel:
-            fmt.Println("the message", msgFromMyChannel)
-		case msgFromAnotherChannel := <- anotherChannel:
-            fmt.Println("the message", msgFromAnotherChannel)
-        default:
-            fmt.Println("no message", myChannel)
-	}
-
-	charChannel := make(chan string, 3) 
-
-	chars := []string{"a","b","c"}
-
-	for _, s := range chars {
-		select {
-			case charChannel <- string(s):
-                fmt.Println("test", string(s))
-            default:
-                fmt.Println("channel is full")
+		orders := []string{"Order1", "Order2", "Order3"}
+		for _, order := range orders {
+			fmt.Println("Generating normal order:", order)
+			normalOrders <- order
+			time.Sleep(1 * time.Second) // Simulate time to generate order
 		}
-	}
+		close(normalOrders)
+	}()
 
-	close(charChannel)
+	// Goroutine to generate priority orders
+	go func() {
+		priorityOrdersList := []string{"PriorityOrder1", "PriorityOrder2"}
+		for _, order := range priorityOrdersList {
+			fmt.Println("Generating priority order:", order)
+			priorityOrders <- order
+			time.Sleep(3 * time.Second) // Simulate time to generate priority order
+		}
+		close(priorityOrders)
+	}()
 
-	for result := range charChannel { 
-		fmt.Println(result)
-	}
+	// Goroutine to process orders
+	go func() {
+		for {
+			select {
+			case order, ok := <-normalOrders:
+				if ok {
+					fmt.Println("Processing normal order:", order)
+					time.Sleep(2 * time.Second) // Simulate time to process order
+				} else {
+					normalOrders = nil // Set to nil to avoid blocking
+				}
+			case priorityOrder, ok := <-priorityOrders:
+				if ok {
+					fmt.Println("Processing priority order:", priorityOrder)
+					time.Sleep(2 * time.Second) // Simulate time to process priority order
+				} else {
+					priorityOrders = nil // Set to nil to avoid blocking
+				}
+			}
+			
+			// Break if both channels are closed
+			if normalOrders == nil && priorityOrders == nil {
+				break
+			}
+		}
+	}()
 
-	done := make(chan bool)
-
-	go doWork(done)
-	
-	time.Sleep(time.Second)
-
-	close(done)
+	// Allow time for goroutines to complete
+	time.Sleep(20 * time.Second)
 }
