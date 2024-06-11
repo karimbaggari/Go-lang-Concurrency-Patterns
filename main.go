@@ -5,63 +5,52 @@ import (
 	"time"
 )
 
-func doWork(done <- chan bool) {
-	for {
-		select {
-		case <- done:
-			return
-		default:
-			fmt.Println("channel is empty")
-		}
-	}
-}
 
 func main() {
-	myChannel := make(chan string)
-	anotherChannel := make(chan string)
+	unbufferedChannel := make(chan string)
+	bufferedChan := make(chan string, 5)
 
+	// Goroutine to generate tasks
 	go func() {
-		anotherChannel <- "data 2"
-	}()
-	go func() {
-		myChannel <- "data"
-	}()
-	
-	time.Sleep(time.Second * 2)
-
-	select {
-		case msgFromMyChannel := <- myChannel:
-            fmt.Println("the message", msgFromMyChannel)
-		case msgFromAnotherChannel := <- anotherChannel:
-            fmt.Println("the message", msgFromAnotherChannel)
-        default:
-            fmt.Println("no message", myChannel)
-	}
-
-	charChannel := make(chan string, 3) 
-
-	chars := []string{"a","b","c"}
-
-	for _, s := range chars {
-		select {
-			case charChannel <- string(s):
-                fmt.Println("test", string(s))
-            default:
-                fmt.Println("channel is full")
+		tasks := []string{"Order1", "Order2", "Order3", "Order4", "Order5", "Order6", "Order7", "Order8", "Order9", "Order10", "Order11"}
+		for _, task := range tasks {
+			fmt.Println("Generating task:", task)
+			unbufferedChannel <- task
+			time.Sleep(1 * time.Second) // Simulate time to generate task
 		}
-	}
+		close(unbufferedChannel)
+	}()
 
-	close(charChannel)
+	// Goroutine to process tasks
+	go func() {
+		for task := range unbufferedChannel {
+			fmt.Println("Processing task:", task)
+			time.Sleep(2 * time.Second) // Simulate time to process task
+		}
+	}()
 
-	for result := range charChannel { 
-		fmt.Println(result)
-	}
+	// Allow time for goroutines to complete
+	time.Sleep(22 * time.Second)
 
-	done := make(chan bool)
+	// Goroutine to generate tasks
+	go func() {
+		tasks := []string{"Order1", "Order2", "Order3", "Order4", "Order5", "Order6"}
+		for _, task := range tasks {
+			fmt.Println("Generating task:", task)
+			bufferedChan <- task
+			time.Sleep(1 * time.Second) // Simulate time to generate task
+		}
+		close(bufferedChan)
+	}()
 
-	go doWork(done)
-	
-	time.Sleep(time.Second)
+	// Goroutine to process tasks
+	go func() {
+		for task := range bufferedChan {
+			fmt.Println("Processing task:", task)
+			time.Sleep(2 * time.Second) // Simulate time to process task
+		}
+	}()
 
-	close(done)
+	// Allow time for goroutines to complete
+	time.Sleep(20 * time.Second)
 }
