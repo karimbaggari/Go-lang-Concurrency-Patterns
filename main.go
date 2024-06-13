@@ -1,67 +1,45 @@
 package main
 
 import (
-	"fmt"
-	"time"
+    "fmt"
+    "time"
 )
 
-func doWork(done <- chan bool) {
-	for {
-		select {
-		case <- done:
-			return
-		default:
-			fmt.Println("channel is empty")
-		}
-	}
+// Order struct representing an order in the online store
+type Order struct {
+    ID     int
+    Amount float64
+}
+
+// processOrders simulates processing orders and sending them to a 'done' channel
+func processOrders(orders <-chan Order, done chan<- Order) {
+    for order := range orders {
+        // Simulate processing time
+        time.Sleep(time.Second)
+        fmt.Printf("Processed order ID %d\n", order.ID)
+        done <- order // Send the processed order to the 'done' channel
+    }
 }
 
 func main() {
-	myChannel := make(chan string)
-	anotherChannel := make(chan string)
+    orders := make(chan Order)
+    done := make(chan Order)
 
-	go func() {
-		anotherChannel <- "data 2"
-	}()
-	go func() {
-		myChannel <- "data"
-	}()
-	
-	time.Sleep(time.Second * 2)
+    // Start the order processing goroutine
+    go processOrders(orders, done)
 
-	select {
-		case msgFromMyChannel := <- myChannel:
-            fmt.Println("the message", msgFromMyChannel)
-		case msgFromAnotherChannel := <- anotherChannel:
-            fmt.Println("the message", msgFromAnotherChannel)
-        default:
-            fmt.Println("no message", myChannel)
+    // Simulate receiving orders
+    for i := 1; i <= 5; i++ {
+        orders <- Order{ID: i, Amount: float64(i * 10)}
+        fmt.Printf("Received order ID %d\n", i)
+    }
+
+    // Close the 'orders' channel to signal that no more orders will be sent
+    close(orders)
+
+    // Wait for all orders to be processed
+    for i := 1; i <= 5; i++ {
+        processedOrder := <-done
+        fmt.Printf("Completed order ID %d\n", processedOrder)
 	}
-
-	charChannel := make(chan string, 3) 
-
-	chars := []string{"a","b","c"}
-
-	for _, s := range chars {
-		select {
-			case charChannel <- string(s):
-                fmt.Println("test", string(s))
-            default:
-                fmt.Println("channel is full")
-		}
-	}
-
-	close(charChannel)
-
-	for result := range charChannel { 
-		fmt.Println(result)
-	}
-
-	done := make(chan bool)
-
-	go doWork(done)
-	
-	time.Sleep(time.Second)
-
-	close(done)
 }
