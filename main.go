@@ -5,63 +5,53 @@ import (
 	"time"
 )
 
-func doWork(done <- chan bool) {
+func main() {
+	// Create two channels
+	sensorData := make(chan int)
+	userCommands := make(chan string)
+
+	// Simulate sensor data and user commands
+	go func() {
+		for i := 0; i < 5; i++ {
+			sensorData <- i
+			time.Sleep(1 * time.Second)
+		}
+		close(sensorData)
+	}()
+
+	go func() {
+		commands := []string{"start", "stop", "pause"}
+		for _, cmd := range commands {
+			userCommands <- cmd
+			time.Sleep(2 * time.Second)
+		}
+		close(userCommands)
+	}()
+
+	// Use a for-select loop to handle data from both channels
 	for {
 		select {
-		case <- done:
-			return
-		default:
-			fmt.Println("channel is empty")
+		case data, ok := <-sensorData:
+			if !ok {
+				sensorData = nil
+				fmt.Println("Sensor data channel closed")
+			} else {
+				fmt.Printf("Received sensor data: %d\n", data)
+			}
+		case cmd, ok := <-userCommands:
+			if !ok {
+				userCommands = nil
+				fmt.Println("User commands channel closed")
+			} else {
+				fmt.Printf("Received user command: %s\n", cmd)
+			}
 		}
-	}
-}
 
-func main() {
-	myChannel := make(chan string)
-	anotherChannel := make(chan string)
-
-	go func() {
-		anotherChannel <- "data 2"
-	}()
-	go func() {
-		myChannel <- "data"
-	}()
-	
-	time.Sleep(time.Second * 2)
-
-	select {
-		case msgFromMyChannel := <- myChannel:
-            fmt.Println("the message", msgFromMyChannel)
-		case msgFromAnotherChannel := <- anotherChannel:
-            fmt.Println("the message", msgFromAnotherChannel)
-        default:
-            fmt.Println("no message", myChannel)
-	}
-
-	charChannel := make(chan string, 3) 
-
-	chars := []string{"a","b","c"}
-
-	for _, s := range chars {
-		select {
-			case charChannel <- string(s):
-                fmt.Println("test", string(s))
-            default:
-                fmt.Println("channel is full")
+		// Exit the loop if both channels are closed
+		if sensorData == nil && userCommands == nil {
+			break
 		}
 	}
 
-	close(charChannel)
-
-	for result := range charChannel { 
-		fmt.Println(result)
-	}
-
-	done := make(chan bool)
-
-	go doWork(done)
-	
-	time.Sleep(time.Second)
-
-	close(done)
+	fmt.Println("All channels are closed, exiting program.")
 }
